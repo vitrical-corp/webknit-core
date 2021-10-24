@@ -1,0 +1,71 @@
+name: webknit-core
+version: '0.0.1'
+summary: WebKnit core
+description: |
+  WebKnit core process manager
+base: core20
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: arm64
+  - build-on: armhf
+
+environment:
+  npm_config_prefix: '$SNAP_COMMON'
+  npm_config_unsafe_perm: 'true'
+  npm_config_global: 'true'
+  PYTHON: '/usr/bin/python3'
+  HOME: '$SNAP_COMMON'
+
+parts:
+  webknit-core:
+    plugin: npm
+    npm-node-version: '14.17.6'
+    source: .
+    build-environment:
+      - SUDO_UID: '0'
+      - SUDO_GID: '0'
+      - SUDO_USER: 'root'
+    build-packages:
+      - npm
+      - git
+    override-build: |
+      PATH=$PATH:$SNAPCRAFT_PART_SRC/../npm/bin
+      npm config set unsafe-perm true
+      npm install
+      npm run build
+      snapcraftctl build
+    stage-packages:
+      - git
+      - net-tools
+      - ping
+
+apps:
+  webknit-core:
+    command: bin/start
+    daemon: simple
+    environment:
+      NODE_ENV: production
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - network-manager
+      - network-observe
+      - network-setup-observe
+      - avahi-control
+      - avahi-observe
+      - gpio
+      - gpio-control
+      - gpio-memory-control
+      - hardware-observe
+      - firewall-control
+      - hostname-control
+      - io-ports-control
+      - locale-control
+      - location-control
+      - location-observe
+      - system-observe
+      - ppp
+      - log-observe

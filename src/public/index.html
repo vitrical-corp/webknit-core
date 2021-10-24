@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Device Recovery</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="text-content">Please enter your registration code below.</div>
+      <div class="textbox-content">
+        <input id="url-textbox" type="text" placeholder="Register URL" autocomplete="username" />
+      </div>
+      <div class="textbox-content">
+        <input id="key-textbox" type="text" placeholder="URL Key" autocomplete="current-password" />
+      </div>
+      <div class="textbox-content">
+        <input id="code-textbox" type="text" placeholder="Register Code" autocomplete="email" />
+      </div>
+      <div class="button-content">
+        <button id="button">Register Device</button>
+      </div>
+    </div>
+    <script>
+      const button = document.querySelector('#button')
+      const codeTextbox = document.querySelector('#code-textbox')
+      const urlTextbox = document.querySelector('#url-textbox')
+      const keyTextbox = document.querySelector('#key-textbox')
+
+      async function postData(url = '', data = {}) {
+        // Default options are marked with *
+        const response = await fetch(url, {
+          method: 'POST', // *GET, POST, PUT, DELETE, etc.
+          mode: 'cors', // no-cors, *cors, same-origin
+          cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+          credentials: 'same-origin', // include, *same-origin, omit
+          headers: {
+            'Content-Type': 'application/json',
+            // 'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          redirect: 'follow', // manual, *follow, error
+          referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+          body: JSON.stringify(data), // body data type must match "Content-Type" header
+        })
+        return response.json() // parses JSON response into native JavaScript objects
+      }
+
+      function setLoading() {
+        button.setAttribute('disabled', 'true')
+      }
+
+      function stopLoading() {
+        button.removeAttribute('disabled')
+      }
+
+      async function sendRegisterCode() {
+        try {
+          setLoading()
+          const code = codeTextbox.value
+          const url = urlTextbox.value
+          const key = keyTextbox.value
+
+          if (!code) throw new Error('Register code is empty. Please enter a valid code.')
+
+          const data = await postData(`http://${window.location.hostname}/api/register`, {
+            code,
+            url,
+            key,
+          })
+          if (!data || data.err) throw data
+
+          let link = document.createElement('a')
+          link.download = 'webknit-intro.pdf'
+          link.href = data.window
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+
+          stopLoading()
+
+          alert(`Success!\nActivation Code: ${data.deviceId}`)
+        } catch (err) {
+          console.log(err)
+          alert(`Error:\n${err.msg || err.message}`)
+          stopLoading()
+        }
+      }
+
+      button.addEventListener('click', sendRegisterCode)
+    </script>
+  </body>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+        'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-content: center;
+      align-items: center;
+    }
+
+    .text-content {
+      padding: 12px;
+      text-align: center;
+      font-size: large;
+    }
+
+    .textbox-content {
+      padding: 12px;
+    }
+
+    .button-content {
+      padding: 12px;
+    }
+  </style>
+</html>

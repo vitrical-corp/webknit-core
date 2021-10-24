@@ -1,0 +1,32 @@
+{
+  "name": "webknit-core",
+  "version": "1.0.0",
+  "description": "Webknit core module",
+  "main": "src/index.js",
+  "bin": {
+    "start": "src/index.js"
+  },
+  "scripts": {
+    "dev": "cd src && nodemon index.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "cd src && node index.js"
+  },
+  "author": "Elijah Lipsky",
+  "license": "UNLICENCED",
+  "dependencies": {
+    "adm-zip": "^0.5.7",
+    "axios": "^0.21.4",
+    "express": "^4.17.1",
+    "pm2": "^5.1.1",
+    "typescript": "^4.4.4",
+    "webknit-device-api": "git+https://github.com/vitrical-corp/webknit-device-api.git",
+    "webknit-lib": "git+https://github.com/vitrical-corp/webknit-lib.git"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.4.34",
+    "@types/express": "^4.17.13",
+    "@types/node": "^16.10.9",
+    "nodemon": "^2.0.13",
+    "ts-node": "^10.3.0"
+  }
+}

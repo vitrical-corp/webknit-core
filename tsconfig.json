@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Node",
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "removeComments": false,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
+  "files": [
+    "src/lib/constants.ts",
+    "src/lib/sys.ts",
+    "src/recover.ts",
+    "src/index.ts",
+    "src/pm2.ts"
+  ],
+  "exclude": ["node_modules"],
+  "compileOnSave": false
+}
