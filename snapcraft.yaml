@@ -58,6 +58,7 @@ apps:
       - avahi-control
       - avahi-observe
       - gpio
+      - gpio-control
       - hardware-observe
       - firewall-control
       - hostname-control
