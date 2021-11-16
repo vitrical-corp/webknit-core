@@ -12,8 +12,8 @@ import {
   APP_PATH,
   ID_PATH,
   API_URL_PATH,
-  API_KEY_PATH,
   LOGS_PATH,
+  VERSION_PATH,
 } from './lib/constants'
 import { timeout } from './lib/sys'
 import { Server } from 'http'
@@ -112,8 +112,13 @@ const options = {
     PRIVATE_KEY_PATH,
     SIGNATURE_PATH,
     ID_PATH,
-    API_KEY_PATH,
     API_URL_PATH,
+    VERSION_PATH,
+    LOGS_PATH,
+    LOG_PATH,
+    BACKUP_LOG_PATH,
+    ERR_PATH,
+    BACKUP_ERR_PATH,
     NODE_ENV: 'production',
   },
 }

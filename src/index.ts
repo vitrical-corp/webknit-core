@@ -25,7 +25,6 @@ import {
   getPrivateKey,
   timeout,
   getAppPackage,
-  getApiKey,
   getApiUrl,
 } from './lib/sys'
 import { tokenize } from 'webknit-lib/crypto'
@@ -33,7 +32,6 @@ import {
   downloadVersion,
   getLatestVersion,
   recoverDevice,
-  setDeviceApiKey,
   setDeviceApiUrl,
 } from 'webknit-device-api'
 import { runRecoveryServer, killRecoveryServer } from './recover'
@@ -41,10 +39,8 @@ import { runPM2, killPM2 } from './pm2'
 
 async function setApiHeaders() {
   try {
-    const key = await getApiKey()
     const url = await getApiUrl()
-    if (!key || !url) return
-    setDeviceApiKey(key)
+    if (!url) return
     setDeviceApiUrl(url)
   } catch (err) {
     throw err

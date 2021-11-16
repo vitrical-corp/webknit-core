@@ -8,7 +8,6 @@ import {
   UPDATE_VERSION_PATH,
   VERSION_PATH,
   APP_PACKAGE_PATH,
-  API_KEY_PATH,
   API_URL_PATH,
 } from './constants'
 
@@ -26,10 +25,6 @@ export function getPrivateKey(): Promise<string | null> {
 
 export function getAppPackage(): Promise<string | null> {
   return fs.existsSync(APP_PACKAGE_PATH) ? fs.promises.readFile(APP_PACKAGE_PATH, 'utf8') : null
-}
-
-export function getApiKey(): Promise<string | null> {
-  return fs.existsSync(API_KEY_PATH) ? fs.promises.readFile(API_KEY_PATH, 'utf8') : null
 }
 
 export function getApiUrl(): Promise<string | null> {

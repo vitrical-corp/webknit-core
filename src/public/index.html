@@ -13,9 +13,6 @@
         <input id="url-textbox" type="text" placeholder="Register URL" autocomplete="username" />
       </div>
       <div class="textbox-content">
-        <input id="key-textbox" type="text" placeholder="URL Key" autocomplete="current-password" />
-      </div>
-      <div class="textbox-content">
         <input id="code-textbox" type="text" placeholder="Register Code" autocomplete="email" />
       </div>
       <div class="button-content">
@@ -26,7 +23,6 @@
       const button = document.querySelector('#button')
       const codeTextbox = document.querySelector('#code-textbox')
       const urlTextbox = document.querySelector('#url-textbox')
-      const keyTextbox = document.querySelector('#key-textbox')
 
       async function postData(url = '', data = {}) {
         // Default options are marked with *
@@ -59,14 +55,12 @@
           setLoading()
           const code = codeTextbox.value
           const url = urlTextbox.value
-          const key = keyTextbox.value
 
           if (!code) throw new Error('Register code is empty. Please enter a valid code.')
 
           const data = await postData(`http://${window.location.hostname}/api/register`, {
             code,
             url,
-            key,
           })
           if (!data || data.err) throw data
 
