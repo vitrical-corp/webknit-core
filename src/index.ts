@@ -20,7 +20,6 @@ import {
   getUpdateVersion,
   getAppVersion,
   getBackupVersion,
-  getSignature,
   getId,
   getPrivateKey,
   timeout,
@@ -28,12 +27,7 @@ import {
   getApiUrl,
 } from './lib/sys'
 import { tokenize } from 'webknit-lib/crypto'
-import {
-  downloadVersion,
-  getLatestVersion,
-  recoverDevice,
-  setDeviceApiUrl,
-} from 'webknit-device-api'
+import { downloadVersion, getLatestVersion, setDeviceApiUrl } from 'webknit-device-api'
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
 
@@ -62,20 +56,6 @@ async function createAuthToken(
         expiresIn: `${expiresIn.toString()}s`,
       }
     )
-  } catch (err) {
-    throw err
-  }
-}
-
-async function getRecovery(): Promise<void> {
-  try {
-    const signature = await getSignature()
-    if (!signature) throw new Error('Signature is non-existant')
-
-    const { privateKey, deviceId } = await recoverDevice({ signature })
-
-    await fs.promises.writeFile(PRIVATE_KEY_PATH, privateKey, 'utf8')
-    await fs.promises.writeFile(ID_PATH, deviceId, 'utf8')
   } catch (err) {
     throw err
   }
@@ -116,16 +96,16 @@ async function checkUpdatesAndDownload(): Promise<boolean> {
     if (fs.existsSync(APP_PATH)) {
       // If app exists, check if the version is the latest
       const version = await getAppVersion()
-      if (latest === version) {
+      if (latest.toString() === version) {
         console.log('App is up to date.')
         return false
       }
     }
     // Download the latest version of the update
     console.log(`Downloading update ${latest}...`)
-    await downloadVersion({ token, version: latest, output: UPDATE_PATH })
+    await downloadVersion({ token, version: latest.toString(), output: UPDATE_PATH })
     // Write the version to the store path
-    await fs.promises.writeFile(path.join(UPDATE_VERSION_PATH), latest)
+    await fs.promises.writeFile(path.join(UPDATE_VERSION_PATH), latest.toString())
     console.log(`Done downloading ${latest}.`)
     return true
   } catch (err) {
@@ -219,20 +199,11 @@ async function main(prevErr?: Error): Promise<void> {
     await prepFolders()
     await setApiHeaders()
 
-    // Detect if signature exists and go into recovery mode if not
     const privateKey = await getPrivateKey()
     const id = await getId()
     if (!privateKey || !id) {
-      console.log('Private key is not found. Checking to automatically recover...')
-      try {
-        await getRecovery()
-        online = true
-        console.log('Successfully automatically recovered from signature loss.')
-      } catch (err) {
-        console.error(err)
-        console.log('Signature cannot be recovered.')
-        return runRecoveryServer(handleOnRecovered)
-      }
+      console.log('Private key is not found. Running recovery server')
+      return runRecoveryServer(handleOnRecovered)
     }
 
     if (online) {

@@ -1,7 +1,6 @@
 import fs from 'fs'
 import os from 'os'
 import {
-  SIGNATURE_PATH,
   ID_PATH,
   PRIVATE_KEY_PATH,
   BACKUP_VERSION_PATH,
@@ -10,10 +9,6 @@ import {
   APP_PACKAGE_PATH,
   API_URL_PATH,
 } from './constants'
-
-export function getSignature(): Promise<string | null> {
-  return fs.existsSync(SIGNATURE_PATH) ? fs.promises.readFile(SIGNATURE_PATH, 'utf8') : null
-}
 
 export function getId(): Promise<string | null> {
   return fs.existsSync(ID_PATH) ? fs.promises.readFile(ID_PATH, 'utf8') : null

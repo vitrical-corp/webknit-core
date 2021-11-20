@@ -5,9 +5,9 @@ import express from 'express'
 
 import { getNetworkInterface } from './lib/sys'
 
-import { SIGNATURE_PATH, PRIVATE_KEY_PATH, API_URL_PATH, ID_PATH } from './lib/constants'
+import { PRIVATE_KEY_PATH, API_URL_PATH, ID_PATH } from './lib/constants'
 
-import { registerDevice, setDeviceApiUrl } from 'webknit-device-api'
+import { deviceRegister, setDeviceApiUrl } from 'webknit-device-api'
 
 var serverLock: Server | null = null
 
@@ -26,7 +26,7 @@ export async function runRecoveryServer(onRecovered: Function) {
           setDeviceApiUrl(url)
         }
 
-        const { msg, deviceId, signature, privateKey, errors, window } = await registerDevice({
+        const { msg, deviceId, privateKey, errors, window } = await deviceRegister({
           mac,
           code,
         })
@@ -36,7 +36,6 @@ export async function runRecoveryServer(onRecovered: Function) {
 
         await Promise.all([
           fs.promises.writeFile(ID_PATH, deviceId, 'utf8'),
-          fs.promises.writeFile(SIGNATURE_PATH, signature, 'utf8'),
           fs.promises.writeFile(PRIVATE_KEY_PATH, privateKey, 'utf8'),
           fs.promises.writeFile(API_URL_PATH, url, 'utf8'),
         ])
