@@ -205,6 +205,7 @@ async function main(prevErr?: Error): Promise<void> {
       console.log('Private key is not found. Running recovery server')
       return runRecoveryServer(handleOnRecovered)
     }
+    console.log(`Device ID: ${id}`)
 
     if (online) {
       try {
