@@ -27,7 +27,12 @@ import {
   getApiUrl,
 } from './lib/sys'
 import { tokenize } from 'webknit-lib/crypto'
-import { downloadVersion, getLatestVersion, setDeviceApiUrl } from 'webknit-device-api'
+import {
+  downloadVersion,
+  getLatestVersion,
+  setDeviceApiUrl,
+  deviceValidateId,
+} from 'webknit-device-api'
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
 
@@ -206,6 +211,17 @@ async function main(prevErr?: Error): Promise<void> {
       return runRecoveryServer(handleOnRecovered)
     }
     console.log(`Device ID: ${id}`)
+    try {
+      await deviceValidateId({ deviceId: id })
+      console.error('Validated device ID')
+    } catch (err) {
+      console.error('Failed to validate device ID')
+      console.error(err?.response?.msg || err.stack)
+      if (err?.response?.status === 410) {
+        console.log('Device ID was determined invalid by server. Running recovery server')
+        return runRecoveryServer(handleOnRecovered)
+      }
+    }
 
     if (online) {
       try {
