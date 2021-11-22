@@ -26,7 +26,14 @@ export async function runRecoveryServer(onRecovered: Function) {
           setDeviceApiUrl(url)
         }
 
-        const { msg, deviceId, privateKey, errors, window } = await deviceRegister({
+        const {
+          msg,
+          deviceId,
+          privateKey,
+          code: activationCode,
+          errors,
+          window,
+        } = await deviceRegister({
           mac,
           code,
         })
@@ -40,7 +47,7 @@ export async function runRecoveryServer(onRecovered: Function) {
           fs.promises.writeFile(API_URL_PATH, url, 'utf8'),
         ])
 
-        res.status(200).send({ err: false, msg, deviceId, window })
+        res.status(200).send({ err: false, msg, deviceId, window, code: activationCode })
 
         console.log('Successfully registered.')
         onRecovered()
