@@ -36,6 +36,13 @@ import {
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
 
+function logError(err: any) {
+  console.error(err?.stack)
+  if (err?.response?.data?.msg) {
+    console.error('Request error: ' + err?.response?.data?.msg)
+  }
+}
+
 async function setApiHeaders() {
   try {
     const url = await getApiUrl()
@@ -91,12 +98,11 @@ async function prepFolders(): Promise<void> {
 
 async function checkUpdatesAndDownload(): Promise<boolean> {
   try {
+    let token: string
     const privateKey = await getPrivateKey()
     const deviceId = await getId()
-    const token = await createAuthToken(deviceId, privateKey, 10)
-    // Write the assigned device ID
-    await fs.promises.writeFile(path.join(ID_PATH), deviceId)
     // Get the latest version of the code
+    token = await createAuthToken(deviceId, privateKey, 15)
     const { latest } = await getLatestVersion({ token })
     if (fs.existsSync(APP_PATH)) {
       // If app exists, check if the version is the latest
@@ -108,6 +114,7 @@ async function checkUpdatesAndDownload(): Promise<boolean> {
     }
     // Download the latest version of the update
     console.log(`Downloading update ${latest}...`)
+    token = await createAuthToken(deviceId, privateKey, 15)
     await downloadVersion({ token, version: latest.toString(), output: UPDATE_PATH })
     // Write the version to the store path
     await fs.promises.writeFile(path.join(UPDATE_VERSION_PATH), latest.toString())
@@ -216,7 +223,7 @@ async function main(prevErr?: Error): Promise<void> {
       console.error('Validated device ID')
     } catch (err) {
       console.error('Failed to validate device ID')
-      console.error(err?.response?.msg || err.stack)
+      logError(err)
       if (err?.response?.status === 410) {
         console.log('Device ID was determined invalid by server. Running recovery server')
         return runRecoveryServer(handleOnRecovered)
@@ -235,7 +242,7 @@ async function main(prevErr?: Error): Promise<void> {
           console.log(`Completed extracting update.`)
         }
       } catch (err) {
-        console.error(err)
+        logError(err)
         if (!err.isAxiosError) throw err
         online = false
       }
@@ -255,8 +262,7 @@ async function main(prevErr?: Error): Promise<void> {
     return main()
   } catch (err) {
     if (prevErr?.message !== err.message) {
-      console.error(err.message)
-      console.error(err.stack)
+      logError(err)
     }
     if (err.isAxiosError) {
       online = false
