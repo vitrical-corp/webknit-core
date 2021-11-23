@@ -32,6 +32,8 @@ import {
   getLatestVersion,
   setDeviceApiUrl,
   deviceValidateId,
+  deviceSetStatus,
+  deviceClearStatus,
 } from 'webknit-device-api'
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
@@ -212,14 +214,19 @@ async function main(prevErr?: Error): Promise<void> {
     await setApiHeaders()
 
     const privateKey = await getPrivateKey()
-    const id = await getId()
-    if (!privateKey || !id) {
+    const deviceId = await getId()
+    if (!privateKey || !deviceId) {
       console.log('Private key is not found. Running recovery server')
       return runRecoveryServer(handleOnRecovered)
     }
-    console.log(`Device ID: ${id}`)
+
+    console.log(`Device ID: ${deviceId}`)
+
+    let token = await createAuthToken(deviceId, privateKey, 5)
+    await deviceSetStatus({ token, status: 'Booting up...' })
+
     try {
-      await deviceValidateId({ deviceId: id })
+      await deviceValidateId({ deviceId: deviceId })
       console.error('Validated device ID')
     } catch (err) {
       console.error('Failed to validate device ID')
@@ -235,6 +242,9 @@ async function main(prevErr?: Error): Promise<void> {
         const updated = await checkUpdatesAndDownload()
         online = true
         if (updated) {
+          token = await createAuthToken(deviceId, privateKey, 5)
+          await deviceSetStatus({ token, status: 'Updating...' })
+
           console.log(`Updated successfully. Killing app...`)
           await killPM2()
           console.log(`Killed app. Extracting update...`)
@@ -257,6 +267,10 @@ async function main(prevErr?: Error): Promise<void> {
       }
       await revertUpdate()
     }
+
+    token = await createAuthToken(deviceId, privateKey, 5)
+    await deviceClearStatus({ token })
+
     await runPM2(handleCommand)
     await timeout(REFRESH_TIME)
     return main()
