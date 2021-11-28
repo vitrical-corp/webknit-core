@@ -68,3 +68,7 @@ apps:
       - system-observe
       - ppp
       - log-observe
+      - shutdown
+      - system-files
+      - process-control
+      - power-control
