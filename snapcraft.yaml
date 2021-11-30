@@ -69,3 +69,5 @@ apps:
       - ppp
       - log-observe
       - shutdown
+      - process-control
+      - power-control
