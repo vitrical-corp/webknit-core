@@ -23,8 +23,8 @@ import {
   getId,
   getPrivateKey,
   timeout,
-  getAppPackage,
   getApiUrl,
+  validateAppFiles,
 } from './lib/sys'
 import { tokenize } from 'webknit-lib/crypto'
 import {
@@ -38,10 +38,10 @@ import {
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
 
-function logError(err: any) {
-  console.error(err?.stack)
-  if (err?.response?.data?.msg) {
-    console.error('Request error: ' + err?.response?.data?.msg)
+function logError(err: any): void {
+  console.log(err.stack)
+  if (err.status) {
+    console.log(`Status code ${err.status}`)
   }
 }
 
@@ -106,6 +106,7 @@ async function checkUpdatesAndDownload(): Promise<boolean> {
     // Get the latest version of the code
     token = await createAuthToken(deviceId, privateKey, 15)
     const { latest } = await getLatestVersion({ token })
+    console.log(`Latest update is ${latest}`)
     if (fs.existsSync(APP_PATH)) {
       // If app exists, check if the version is the latest
       const version = await getAppVersion()
@@ -115,7 +116,7 @@ async function checkUpdatesAndDownload(): Promise<boolean> {
       }
     }
     // Download the latest version of the update
-    console.log(`Downloading update ${latest}...`)
+    console.log(`Downloading update ${latest}`)
     token = await createAuthToken(deviceId, privateKey, 15)
     await downloadVersion({ token, version: latest.toString(), output: UPDATE_PATH })
     // Write the version to the store path
@@ -159,7 +160,7 @@ async function revertUpdate(): Promise<void> {
   try {
     if (!fs.existsSync(BACKUP_PATH)) {
       // We're kinda screwed :(
-      console.error('Cannot revert the update because backup is missing. Skipping...')
+      console.log('Cannot revert the update because backup is missing. Skipping')
       return
     }
     if (fs.existsSync(READY_STAT_PATH)) {
@@ -183,14 +184,14 @@ async function revertUpdate(): Promise<void> {
 async function handleCommand(packet: any): Promise<void> {
   try {
     if (packet.err) {
-      console.error('Runtime error has been encountered. Restoring backup...')
-      console.error(packet.err)
+      console.log('Runtime error has been encountered. Restoring backup')
+      console.log(packet.err)
       await killPM2()
       await revertUpdate()
       runPM2(handleCommand)
     }
   } catch (err) {
-    console.error(err)
+    console.log(err)
     process.exit(-1)
   }
 }
@@ -209,7 +210,7 @@ var online = true
 
 async function main(prevErr?: Error): Promise<void> {
   try {
-    console.log('Running procedures...')
+    console.log('Running procedures')
     await prepFolders()
     await setApiHeaders()
 
@@ -223,13 +224,19 @@ async function main(prevErr?: Error): Promise<void> {
     console.log(`Device ID: ${deviceId}`)
 
     let token = await createAuthToken(deviceId, privateKey, 5)
-    await deviceSetStatus({ token, status: 'Booting up...' })
+    try {
+      console.log('Setting device status to booting up')
+      await deviceSetStatus({ token, status: 'Booting up' })
+    } catch (err) {
+      logError(err)
+    }
 
     try {
+      console.log('Validating device ID')
       await deviceValidateId({ deviceId: deviceId })
-      console.error('Validated device ID')
+      console.log('Validated device ID')
     } catch (err) {
-      console.error('Failed to validate device ID')
+      console.log('Failed to validate device ID')
       logError(err)
       if (err?.response?.status === 410) {
         console.log('Device ID was determined invalid by server. Running recovery server')
@@ -239,15 +246,21 @@ async function main(prevErr?: Error): Promise<void> {
 
     if (online) {
       try {
+        console.log('Checking for updates')
         const updated = await checkUpdatesAndDownload()
         online = true
         if (updated) {
           token = await createAuthToken(deviceId, privateKey, 5)
-          await deviceSetStatus({ token, status: 'Updating...' })
+          try {
+            console.log('Setting device status to updating')
+            await deviceSetStatus({ token, status: 'Updating' })
+          } catch (err) {
+            logError(err)
+          }
 
-          console.log(`Updated successfully. Killing app...`)
+          console.log(`Updated successfully. Killing app`)
           await killPM2()
-          console.log(`Killed app. Extracting update...`)
+          console.log(`Killed app. Extracting update`)
           await extractUpdate()
           console.log(`Completed extracting update.`)
         }
@@ -258,18 +271,26 @@ async function main(prevErr?: Error): Promise<void> {
       }
     }
 
-    const pkg = await getAppPackage()
-    if (!pkg) {
-      console.error('App does not exist. Reverting to backup...')
-      const backupExists = await getBackupVersion()
-      if (!backupExists) {
-        throw new Error('Backup file does not exist')
+    try {
+      validateAppFiles()
+    } catch (err) {
+      logError(err)
+      console.log('App failed validation. Reverting to backup')
+      const backupVersion = await getBackupVersion()
+      if (!backupVersion) {
+        console.log('Backup file does not exist')
       }
+      console.log(`Reverting to backup version ${backupVersion}`)
       await revertUpdate()
     }
 
     token = await createAuthToken(deviceId, privateKey, 5)
-    await deviceClearStatus({ token })
+    try {
+      console.log('Clearing device status')
+      await deviceClearStatus({ token })
+    } catch (err) {
+      logError(err)
+    }
 
     await runPM2(handleCommand)
     await timeout(REFRESH_TIME)
@@ -278,7 +299,7 @@ async function main(prevErr?: Error): Promise<void> {
     if (prevErr?.message !== err.message) {
       logError(err)
     }
-    if (err.isAxiosError) {
+    if (err.isApiError) {
       online = false
     }
     await timeout(2000)

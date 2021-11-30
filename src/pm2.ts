@@ -44,7 +44,7 @@ async function checkLogs() {
       await fs.promises.writeFile(ERR_PATH, '')
     }
   } catch (err) {
-    console.error(err)
+    console.log(err)
   } finally {
     await timeout(1000 * 30)
     checkLogs()
@@ -128,13 +128,13 @@ export function runPM2(onCommand: Function): Promise<void> {
     if (running) return resolve()
     pm2.connect((err) => {
       if (err) {
-        console.error(err)
+        console.log(err)
         return reject(err)
       }
 
       pm2.start(options, (err, apps) => {
         if (err) {
-          console.error(err)
+          console.log(err)
           pm2.disconnect()
           return reject(err)
         }
@@ -146,7 +146,7 @@ export function runPM2(onCommand: Function): Promise<void> {
 
       pm2.launchBus((err, pm2Bus) => {
         if (err) {
-          console.error(err)
+          console.log(err)
           onCommand({ err })
           return
         }

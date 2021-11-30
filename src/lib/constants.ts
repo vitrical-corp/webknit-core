@@ -16,6 +16,7 @@ export const API_URL_PATH = path.join(STAT_PATH, './api-url')
 
 export const APP_PATH = path.join(SNAP_COMMON || path.join(__dirname, '../../'), './app')
 export const APP_PACKAGE_PATH = path.join(APP_PATH, './package.json')
+export const APP_INDEX_PATH = path.join(APP_PATH, './index.js')
 
 export const STORE_PATH = path.join(SNAP_DATA || path.join(__dirname, '../../'), './store')
 export const LOGS_PATH = path.join(SNAP_DATA || path.join(__dirname, '../../'), './logs')

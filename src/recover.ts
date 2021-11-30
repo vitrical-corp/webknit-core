@@ -38,7 +38,7 @@ export async function runRecoveryServer(onRecovered: Function) {
           code,
         })
         if (errors) {
-          errors.forEach((err: Error) => console.error(err))
+          errors.forEach((err: Error) => console.log(err))
         }
 
         await Promise.all([
@@ -52,8 +52,8 @@ export async function runRecoveryServer(onRecovered: Function) {
         console.log('Successfully registered.')
         onRecovered()
       } catch (err) {
-        console.error(err?.response?.data?.msg || err.message)
-        console.error(err?.response?.data?.ip || err.stack)
+        console.log(err?.response?.data?.msg || err.message)
+        console.log(err?.response?.data?.ip || err.stack)
         const msg = err?.response?.data?.msg || err.message
         return res.status(400).send({ err: true, msg })
       }
