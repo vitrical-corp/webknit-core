@@ -5,16 +5,17 @@ import AdmZip from 'adm-zip'
 import {
   STORE_PATH,
   STAT_PATH,
-  PRIVATE_KEY_PATH,
   READY_STAT_PATH,
   APP_PATH,
   VERSION_PATH,
   UPDATE_PATH,
-  ID_PATH,
   UPDATE_VERSION_PATH,
   BACKUP_VERSION_PATH,
   BACKUP_PATH,
   LOGS_PATH,
+  LOG_PATH,
+  ERR_PATH,
+  LOCATION_PATH,
 } from './lib/constants'
 import {
   getUpdateVersion,
@@ -29,11 +30,11 @@ import {
 import { tokenize } from 'webknit-lib/crypto'
 import {
   downloadVersion,
-  getLatestVersion,
   setDeviceApiUrl,
   deviceValidateId,
   deviceSetStatus,
   deviceClearStatus,
+  deviceGetStartupInfo,
 } from 'webknit-device-api'
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
@@ -98,15 +99,34 @@ async function prepFolders(): Promise<void> {
   }
 }
 
-async function checkUpdatesAndDownload(): Promise<boolean> {
+async function clearLogs(): Promise<void> {
   try {
-    let token: string
-    const privateKey = await getPrivateKey()
-    const deviceId = await getId()
-    // Get the latest version of the code
-    token = await createAuthToken(deviceId, privateKey, 15)
-    const { latest } = await getLatestVersion({ token })
-    console.log(`Latest update is ${latest}`)
+    const logsExist = fs.existsSync(LOGS_PATH)
+    if (!logsExist) return null
+
+    await Promise.all([
+      fs.promises.writeFile(LOG_PATH, '', 'utf8'),
+      fs.promises.writeFile(ERR_PATH, '', 'utf8'),
+    ])
+  } catch (err) {
+    throw err
+  }
+}
+
+async function writeLocationInfo(location: { [key: string]: any }): Promise<void> {
+  try {
+    await fs.promises.writeFile(LOCATION_PATH, JSON.stringify(location), 'utf8')
+  } catch (err) {
+    throw err
+  }
+}
+
+async function checkUpdatesAndDownload(
+  privateKey: string,
+  deviceId: string,
+  latest: number
+): Promise<boolean> {
+  try {
     if (fs.existsSync(APP_PATH)) {
       // If app exists, check if the version is the latest
       const version = await getAppVersion()
@@ -117,7 +137,7 @@ async function checkUpdatesAndDownload(): Promise<boolean> {
     }
     // Download the latest version of the update
     console.log(`Downloading update ${latest}`)
-    token = await createAuthToken(deviceId, privateKey, 15)
+    const token = await createAuthToken(deviceId, privateKey, 15)
     await downloadVersion({ token, version: latest.toString(), output: UPDATE_PATH })
     // Write the version to the store path
     await fs.promises.writeFile(path.join(UPDATE_VERSION_PATH), latest.toString())
@@ -206,7 +226,6 @@ async function handleOnRecovered() {
 }
 
 const REFRESH_TIME = 1000 * 60 * 60 * 4
-var online = true
 
 async function main(prevErr?: Error): Promise<void> {
   try {
@@ -221,10 +240,10 @@ async function main(prevErr?: Error): Promise<void> {
       return runRecoveryServer(handleOnRecovered)
     }
 
-    console.log(`Device ID: ${deviceId}`)
+    console.log(`Device ID ${deviceId}`)
 
-    let token = await createAuthToken(deviceId, privateKey, 5)
     try {
+      const token = await createAuthToken(deviceId, privateKey, 8)
       console.log('Setting device status to booting up')
       await deviceSetStatus({ token, status: 'Booting up' })
     } catch (err) {
@@ -233,7 +252,7 @@ async function main(prevErr?: Error): Promise<void> {
 
     try {
       console.log('Validating device ID')
-      await deviceValidateId({ deviceId: deviceId })
+      await deviceValidateId({ deviceId })
       console.log('Validated device ID')
     } catch (err) {
       console.log('Failed to validate device ID')
@@ -244,13 +263,20 @@ async function main(prevErr?: Error): Promise<void> {
       }
     }
 
-    if (online) {
-      try {
-        console.log('Checking for updates')
-        const updated = await checkUpdatesAndDownload()
-        online = true
+    try {
+      let token = await createAuthToken(deviceId, privateKey, 8)
+      const { device, location, latest } = await deviceGetStartupInfo({ token })
+      if (!device.keepLogs) {
+        await clearLogs()
+      }
+      if (location) {
+        await writeLocationInfo(location)
+      }
+      if (latest) {
+        console.log(`Latest update is ${latest}`)
+        const updated = await checkUpdatesAndDownload(privateKey, deviceId, latest)
         if (updated) {
-          token = await createAuthToken(deviceId, privateKey, 5)
+          token = await createAuthToken(deviceId, privateKey, 8)
           try {
             console.log('Setting device status to updating')
             await deviceSetStatus({ token, status: 'Updating' })
@@ -264,11 +290,10 @@ async function main(prevErr?: Error): Promise<void> {
           await extractUpdate()
           console.log(`Completed extracting update.`)
         }
-      } catch (err) {
-        logError(err)
-        if (!err.isAxiosError) throw err
-        online = false
       }
+    } catch (err) {
+      await clearLogs()
+      logError(err)
     }
 
     try {
@@ -279,13 +304,14 @@ async function main(prevErr?: Error): Promise<void> {
       const backupVersion = await getBackupVersion()
       if (!backupVersion) {
         console.log('Backup file does not exist')
+        throw new Error('Backup file does not exist and app is corrupt')
       }
       console.log(`Reverting to backup version ${backupVersion}`)
       await revertUpdate()
     }
 
-    token = await createAuthToken(deviceId, privateKey, 5)
     try {
+      const token = await createAuthToken(deviceId, privateKey, 5)
       console.log('Clearing device status')
       await deviceClearStatus({ token })
     } catch (err) {
@@ -298,9 +324,6 @@ async function main(prevErr?: Error): Promise<void> {
   } catch (err) {
     if (prevErr?.message !== err.message) {
       logError(err)
-    }
-    if (err.isApiError) {
-      online = false
     }
     await timeout(2000)
     main(err)

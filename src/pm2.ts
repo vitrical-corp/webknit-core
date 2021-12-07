@@ -13,14 +13,13 @@ import {
   API_URL_PATH,
   LOGS_PATH,
   VERSION_PATH,
+  LOG_PATH,
+  ERR_PATH,
+  BACKUP_LOG_PATH,
+  BACKUP_ERR_PATH,
 } from './lib/constants'
 import { timeout } from './lib/sys'
 import { Server } from 'http'
-
-const LOG_PATH = path.join(LOGS_PATH, './src.log')
-const BACKUP_LOG_PATH = path.join(LOGS_PATH, './src.log.backup')
-const ERR_PATH = path.join(LOGS_PATH, './src.err')
-const BACKUP_ERR_PATH = path.join(LOGS_PATH, './src.err.backup')
 
 const EXEC_PATH = path.join(APP_PATH, './index.js')
 
@@ -46,7 +45,7 @@ async function checkLogs() {
   } catch (err) {
     console.log(err)
   } finally {
-    await timeout(1000 * 30)
+    await timeout(1000 * 60)
     checkLogs()
   }
 }
