@@ -297,7 +297,9 @@ async function main(prevErr?: Error): Promise<void> {
     }
 
     try {
+      console.log('Validating files')
       validateAppFiles()
+      console.log('Successfully validated files')
     } catch (err) {
       logError(err)
       console.log('App failed validation. Reverting to backup')
@@ -318,6 +320,7 @@ async function main(prevErr?: Error): Promise<void> {
       logError(err)
     }
 
+    console.log('Running app')
     await runPM2(handleCommand)
     await timeout(REFRESH_TIME)
     return main()
