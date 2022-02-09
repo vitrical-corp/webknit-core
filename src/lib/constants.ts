@@ -19,8 +19,3 @@ export const APP_PACKAGE_PATH = path.join(APP_PATH, './package.json')
 export const APP_INDEX_PATH = path.join(APP_PATH, './index.js')
 
 export const STORE_PATH = path.join(SNAP_DATA || path.join(__dirname, '../../'), './store')
-export const LOGS_PATH = path.join(SNAP_DATA || path.join(__dirname, '../../'), './logs')
-export const LOG_PATH = path.join(LOGS_PATH, './src.log')
-export const BACKUP_LOG_PATH = path.join(LOGS_PATH, './src.log.backup')
-export const ERR_PATH = path.join(LOGS_PATH, './src.err')
-export const BACKUP_ERR_PATH = path.join(LOGS_PATH, './src.err.backup')

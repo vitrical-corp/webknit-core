@@ -7,7 +7,7 @@ import { getNetworkInterface } from './lib/sys'
 
 import { PRIVATE_KEY_PATH, API_URL_PATH, ID_PATH } from './lib/constants'
 
-import { deviceRegister, setDeviceApiUrl } from 'webknit-device-api'
+import { deviceRegister, setDeviceApiUrl } from '@vitrical/webknit-device-api'
 
 var serverLock: Server | null = null
 

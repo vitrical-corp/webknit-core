@@ -12,9 +12,6 @@ import {
   UPDATE_VERSION_PATH,
   BACKUP_VERSION_PATH,
   BACKUP_PATH,
-  LOGS_PATH,
-  LOG_PATH,
-  ERR_PATH,
   LOCATION_PATH,
 } from './lib/constants'
 import {
@@ -26,8 +23,8 @@ import {
   timeout,
   getApiUrl,
   validateAppFiles,
+  createAuthToken,
 } from './lib/sys'
-import { tokenize } from 'webknit-lib/crypto'
 import {
   downloadVersion,
   setDeviceApiUrl,
@@ -35,42 +32,17 @@ import {
   deviceSetStatus,
   deviceClearStatus,
   deviceGetStartupInfo,
-} from 'webknit-device-api'
+  deviceUpdateCrashes,
+} from '@vitrical/webknit-device-api'
+import { forceLogSync, log } from './lib/logger'
 import { runRecoveryServer, killRecoveryServer } from './recover'
 import { runPM2, killPM2 } from './pm2'
-
-function logError(err: any): void {
-  console.log(err.stack)
-  if (err.status) {
-    console.log(`Status code ${err.status}`)
-  }
-}
 
 async function setApiHeaders() {
   try {
     const url = await getApiUrl()
     if (!url) return
     setDeviceApiUrl(url)
-  } catch (err) {
-    throw err
-  }
-}
-
-async function createAuthToken(
-  deviceId: string,
-  privateKey: string,
-  expiresIn: number
-): Promise<string> {
-  try {
-    return tokenize(
-      {
-        deviceId,
-      },
-      privateKey,
-      {
-        expiresIn: `${expiresIn.toString()}s`,
-      }
-    )
   } catch (err) {
     throw err
   }
@@ -84,30 +56,10 @@ async function prepFolders(): Promise<void> {
       fs.mkdirSync(STORE_PATH)
     }
 
-    // Prep logs folder
-    const logsExist = fs.existsSync(LOGS_PATH)
-    if (!logsExist) {
-      fs.mkdirSync(LOGS_PATH)
-    }
-
     // Prep stat folder
     if (!fs.existsSync(STAT_PATH)) {
       fs.mkdirSync(STAT_PATH)
     }
-  } catch (err) {
-    throw err
-  }
-}
-
-async function clearLogs(): Promise<void> {
-  try {
-    const logsExist = fs.existsSync(LOGS_PATH)
-    if (!logsExist) return null
-
-    await Promise.all([
-      fs.promises.writeFile(LOG_PATH, '', 'utf8'),
-      fs.promises.writeFile(ERR_PATH, '', 'utf8'),
-    ])
   } catch (err) {
     throw err
   }
@@ -131,17 +83,17 @@ async function checkUpdatesAndDownload(
       // If app exists, check if the version is the latest
       const version = await getAppVersion()
       if (latest.toString() === version) {
-        console.log('App is up to date.')
+        log('App is up to date.')
         return false
       }
     }
     // Download the latest version of the update
-    console.log(`Downloading update ${latest}`)
+    log(`Downloading update ${latest}`)
     const token = await createAuthToken(deviceId, privateKey, 15)
     await downloadVersion({ token, version: latest.toString(), output: UPDATE_PATH })
     // Write the version to the store path
     await fs.promises.writeFile(path.join(UPDATE_VERSION_PATH), latest.toString())
-    console.log(`Done downloading ${latest}.`)
+    log(`Done downloading ${latest}.`)
     return true
   } catch (err) {
     throw err
@@ -180,7 +132,7 @@ async function revertUpdate(): Promise<void> {
   try {
     if (!fs.existsSync(BACKUP_PATH)) {
       // We're kinda screwed :(
-      console.log('Cannot revert the update because backup is missing. Skipping')
+      log('Cannot revert the update because backup is missing. Skipping', true)
       return
     }
     if (fs.existsSync(READY_STAT_PATH)) {
@@ -201,17 +153,43 @@ async function revertUpdate(): Promise<void> {
   }
 }
 
+async function submitCrash(err: string) {
+  try {
+    const deviceId = await getId()
+    const privateKey = await getPrivateKey()
+    const version = await getAppVersion()
+    const token = await createAuthToken(deviceId, privateKey, 20)
+    await deviceUpdateCrashes({
+      token,
+      crash: {
+        msg: err,
+        timestamp: new Date().getTime(),
+        version,
+      },
+    })
+  } catch (err) {
+    log('Error submitting crash report', true)
+    log(err.stack, true)
+    await forceLogSync()
+  }
+}
+
 async function handleCommand(packet: any): Promise<void> {
   try {
-    if (packet.err) {
-      console.log('Runtime error has been encountered. Restoring backup')
-      console.log(packet.err)
-      await killPM2()
-      await revertUpdate()
-      runPM2(handleCommand)
+    if (!packet.err) return
+    if (typeof packet.err !== 'string') {
+      log('Packet error in invalid format - expected string', true)
+      return
     }
+    log('Runtime error has been encountered. Restoring backup and creating crash log.', true)
+    await submitCrash(packet.err)
+    await killPM2()
+    await revertUpdate()
+    runPM2(handleCommand)
+    await forceLogSync()
   } catch (err) {
-    console.log(err)
+    log(err.stack, true)
+    await forceLogSync()
     process.exit(-1)
   }
 }
@@ -229,104 +207,105 @@ const REFRESH_TIME = 1000 * 60 * 60 * 4
 
 async function main(prevErr?: Error): Promise<void> {
   try {
-    console.log('Running procedures')
+    log('Booting up and running procedures')
     await prepFolders()
     await setApiHeaders()
 
     const privateKey = await getPrivateKey()
     const deviceId = await getId()
     if (!privateKey || !deviceId) {
-      console.log('Private key is not found. Running recovery server')
+      log('Private key is not found. Running recovery server')
+      await forceLogSync()
       return runRecoveryServer(handleOnRecovered)
     }
 
-    console.log(`Device ID ${deviceId}`)
+    log(`Device ID ${deviceId}`)
 
     try {
       const token = await createAuthToken(deviceId, privateKey, 8)
-      console.log('Setting device status to booting up')
+      log('Setting device status to booting up')
       await deviceSetStatus({ token, status: 'Booting up' })
     } catch (err) {
-      logError(err)
+      log(err.stack, true)
     }
 
     try {
-      console.log('Validating device ID')
+      log('Validating device ID')
       await deviceValidateId({ deviceId })
-      console.log('Validated device ID')
+      log('Validated device ID')
     } catch (err) {
-      console.log('Failed to validate device ID')
-      logError(err)
+      log('Failed to validate device ID', true)
+      log(err.stack, true)
       if (err?.response?.status === 410) {
-        console.log('Device ID was determined invalid by server. Running recovery server')
+        log('Device ID was determined invalid by server. Running recovery server', true)
+        await forceLogSync()
         return runRecoveryServer(handleOnRecovered)
       }
     }
 
     try {
       let token = await createAuthToken(deviceId, privateKey, 8)
-      const { device, location, latest } = await deviceGetStartupInfo({ token })
-      if (!device.keepLogs) {
-        await clearLogs()
-      }
+      const { location, latest } = await deviceGetStartupInfo({ token })
       if (location) {
         await writeLocationInfo(location)
       }
       if (latest) {
-        console.log(`Latest update is ${latest}`)
+        log(`Latest update is ${latest}`)
         const updated = await checkUpdatesAndDownload(privateKey, deviceId, latest)
         if (updated) {
           token = await createAuthToken(deviceId, privateKey, 8)
           try {
-            console.log('Setting device status to updating')
+            log('Setting device status to updating')
             await deviceSetStatus({ token, status: 'Updating' })
           } catch (err) {
-            logError(err)
+            log(err.stack, true)
           }
 
-          console.log(`Updated successfully. Killing app`)
+          log(`Updated successfully. Killing app`)
           await killPM2()
-          console.log(`Killed app. Extracting update`)
+          log(`Killed app. Extracting update`)
           await extractUpdate()
-          console.log(`Completed extracting update.`)
+          log(`Completed extracting update.`)
         }
       }
     } catch (err) {
-      await clearLogs()
-      logError(err)
+      log(err.stack, true)
     }
 
     try {
-      console.log('Validating files')
+      log('Validating files')
       validateAppFiles()
-      console.log('Successfully validated files')
+      log('Successfully validated files')
     } catch (err) {
-      logError(err)
-      console.log('App failed validation. Reverting to backup')
+      log(err.stack, true)
+      log('App failed validation. Reverting to backup', true)
       const backupVersion = await getBackupVersion()
       if (!backupVersion) {
-        console.log('Backup file does not exist')
+        log('Backup file does not exist', true)
         throw new Error('Backup file does not exist and app is corrupt')
       }
-      console.log(`Reverting to backup version ${backupVersion}`)
+      log(`Reverting to backup version ${backupVersion}`)
+      await forceLogSync()
       await revertUpdate()
+      await forceLogSync()
     }
 
     try {
       const token = await createAuthToken(deviceId, privateKey, 5)
-      console.log('Clearing device status')
+      log('Clearing device status')
       await deviceClearStatus({ token })
     } catch (err) {
-      logError(err)
+      log(err.stack, true)
     }
 
-    console.log('Running app')
+    log('Running app')
+    await forceLogSync()
     await runPM2(handleCommand)
     await timeout(REFRESH_TIME)
     return main()
   } catch (err) {
     if (prevErr?.message !== err.message) {
-      logError(err)
+      log(err.stack, true)
     }
     await timeout(2000)
     main(err)

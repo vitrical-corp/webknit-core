@@ -12,6 +12,7 @@
   "files": [
     "src/lib/constants.ts",
     "src/lib/sys.ts",
+    "src/lib/logger.ts",
     "src/recover.ts",
     "src/index.ts",
     "src/pm2.ts"

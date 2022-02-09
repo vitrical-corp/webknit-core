@@ -14,13 +14,13 @@
   "author": "Elijah Lipsky",
   "license": "UNLICENCED",
   "dependencies": {
+    "@vitrical/webknit-device-api": "^1.0.4",
+    "@vitrical/webknit-lib": "^1.0.3",
     "adm-zip": "^0.5.7",
     "axios": "^0.21.4",
     "express": "^4.17.1",
     "pm2": "^5.1.1",
-    "typescript": "^4.4.4",
-    "webknit-device-api": "git+https://github.com/vitrical-corp/webknit-device-api.git",
-    "webknit-lib": "git+https://github.com/vitrical-corp/webknit-lib.git"
+    "typescript": "^4.4.4"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.4.34",

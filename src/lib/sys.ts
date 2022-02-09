@@ -10,6 +10,7 @@ import {
   APP_INDEX_PATH,
   API_URL_PATH,
 } from './constants'
+import { tokenize } from '@vitrical/webknit-lib/crypto'
 
 export function getId(): Promise<string | null> {
   return fs.existsSync(ID_PATH) ? fs.promises.readFile(ID_PATH, 'utf8') : null
@@ -101,4 +102,24 @@ export function getNetworkInterface(): Network {
 
 export function timeout(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export async function createAuthToken(
+  deviceId: string,
+  privateKey: string,
+  expiresIn: number
+): Promise<string> {
+  try {
+    return tokenize(
+      {
+        deviceId,
+      },
+      privateKey,
+      {
+        expiresIn: `${expiresIn.toString()}s`,
+      }
+    )
+  } catch (err) {
+    throw err
+  }
 }
