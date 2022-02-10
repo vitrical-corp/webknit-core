@@ -37,6 +37,7 @@ export async function forceLogSync() {
     lastSyncedHistory = new Date().getTime()
     const privateKey = await getPrivateKey()
     const deviceId = await getId()
+    if (!privateKey || !deviceId) throw new Error('Device ID or private key not found')
     const token = await createAuthToken(deviceId, privateKey, 20)
     await deviceUpdateLogs({ token, logs: logHistory })
     logHistory = []

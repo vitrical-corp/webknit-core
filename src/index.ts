@@ -215,7 +215,6 @@ async function main(prevErr?: Error): Promise<void> {
     const deviceId = await getId()
     if (!privateKey || !deviceId) {
       log('Private key is not found. Running recovery server')
-      await forceLogSync()
       return runRecoveryServer(handleOnRecovered)
     }
 
