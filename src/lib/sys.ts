@@ -93,6 +93,15 @@ export function getNetworkInterface(): Network {
   if (eth['Ethernet']) {
     network = eth['Ethernet'].filter((connection) => connection.family === 'IPv4')[0]
   }
+  if (eth['Ethernet 1']) {
+    network = eth['Ethernet 1'].filter((connection) => connection.family === 'IPv4')[0]
+  }
+  if (eth['Ethernet 2']) {
+    network = eth['Ethernet 2'].filter((connection) => connection.family === 'IPv4')[0]
+  }
+  if (eth['Ethernet 3']) {
+    network = eth['Ethernet 3'].filter((connection) => connection.family === 'IPv4')[0]
+  }
   if (eth['wlp1s0']) {
     network = eth['wlp1s0'].filter((connection) => connection.family === 'IPv4')[0]
   }
