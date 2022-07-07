@@ -105,6 +105,10 @@ export function getNetworkInterface(): Network {
   if (eth['wlp1s0']) {
     network = eth['wlp1s0'].filter((connection) => connection.family === 'IPv4')[0]
   }
+  // Todo: account for ipv6 addresses
+  if (eth['anpi1']) {
+    network = eth['anpi1'].filter((connection) => connection.family === 'IPv6')[0]
+  }
 
   return network
 }
